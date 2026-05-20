@@ -1,3 +1,6 @@
+
+
+const QRCode = require("qrcode");
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const express = require("express");
@@ -29,9 +32,14 @@ const client = new Client({
 
 });
 
-client.on("qr", (qr) => {
-    console.log("ESCANEIE O QR CODE:");
-    qrcode.generate(qr, { small: true });
+client.on("qr", async (qr) => {
+
+    console.log("Novo QR Code gerado!");
+
+    const qrImage = await QRCode.toDataURL(qr);
+
+    console.log(qrImage);
+
 });
 
 client.on("ready", () => {

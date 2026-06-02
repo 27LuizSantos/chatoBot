@@ -26,7 +26,6 @@ const menu = {
 };
 
 function gerarMenu() {
-
     return `Olá! 👋
 
 Escolha uma opção:
@@ -41,20 +40,40 @@ const clientesAguardando = {};
 const clientesAtendidos = {};
 
 client.on('message', async message => {
-
     if (message.fromMe) return;
 
     const numero = message.from;
 
     try {
+        // --- NOVA VERIFICAÇÃO PARA SEGUNDA MENSAGEM ---
+        // Se for a primeira interação do bot com esse número nesta sessão
+        if (!clientesAtendidos[numero]) {
+            const chat = await message.getChat();
+            const mensagens = await chat.fetchMessages({ limit: 2 });
+            
+            // Se houver mais de uma mensagem no histórico recente
+            if (mensagens.length > 1) {
+                // Pega a mensagem anterior à atual
+                const mensagemAnterior = mensagens[mensagens.length - 2];
+                
+                // Se a mensagem anterior foi enviada por VOCÊ, significa que VOCÊ iniciou a conversa.
+                // Então, o bot marca o cliente como já atendido manualmente e não envia o menu.
+                if (mensagemAnterior.fromMe) {
+                    clientesAtendidos[numero] = true;
+                    clientesAguardando[numero] = true; // Evita que envie a mensagem de "Um momento por favor"
+                    console.log(`Conversa iniciada manualmente com ${numero}. Bot silenciado.`);
+                    return; 
+                }
+            }
+        }
+        // ---------------------------------------------
 
         // Tratamento de áudio
         if (message.hasMedia) {
-
             const media = await message.downloadMedia();
 
             if (media && media.mimetype.startsWith('audio')) {
-
+                console.log("Áudio recebido.");
                 await message.reply(
 `Recebemos sua mensagem de áudio. 🎤
 
@@ -73,19 +92,19 @@ ${gerarMenu()}`
 
         // MENU
         if (texto === "menu") {
-
+            console.log("Enviando menu...");
             clientesAguardando[numero] = false;
-
+            clientesAtendidos[numero] = true; // Garante que está marcado como atendido
+            
+            console.log("PASSOU AQUI - OPCAO");
             await message.reply(gerarMenu());
 
             return;
         }
 
-        // Primeira mensagem do cliente
+        // Primeira mensagem de fato iniciada pelo cliente
         if (!clientesAtendidos[numero]) {
-
             clientesAtendidos[numero] = true;
-
             await message.reply(gerarMenu());
 
             return;
@@ -93,7 +112,7 @@ ${gerarMenu()}`
 
         // Opções do menu
         if (menu[texto]) {
-
+            console.log("PASSOU AQUI- OPCAO");
             await message.reply(menu[texto]);
 
             return;
@@ -104,6 +123,7 @@ ${gerarMenu()}`
             return;
         }
 
+        console.log("PASSOU AQUI EM AVISOS...");
         await message.reply(
 `Um momento por favor.
 
@@ -115,11 +135,8 @@ Caso deseje visualizar novamente as opções de atendimento, digite *MENU*.`
         clientesAguardando[numero] = true;
 
     } catch (erro) {
-
         console.error('Erro:', erro);
-
     }
-
 });
 
 client.initialize();

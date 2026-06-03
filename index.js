@@ -36,16 +36,16 @@ Escolha uma opção:
 4 - Formas de pagamento`;
 }
 
+// === FUNÇÃO AUXILIAR DE DELAY ===
+// Faz o bot esperar o tempo definido (em milissegundos) antes de ir para a próxima linha
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
 const clientesAguardando = {};
 const clientesAtendidos = {};
 
 client.on('message', async message => {
-    // ---------------- TRALHA DE SEGURANÇA MÁXIMA ----------------
-    // Se a mensagem foi enviada por VOCÊ, ignore de todas as formas possíveis!
-    if (message.fromMe || message.id.fromMe) {
-        return;
-    }
-    // -----------------------------------------------------------
+    // REGRA DE OURO: Ignora completamente mensagens enviadas por você ou pelo próprio bot
+    if (message.fromMe || message.id.fromMe) return;
 
     const numero = message.from;
 
@@ -56,9 +56,9 @@ client.on('message', async message => {
             const mensagens = await chat.fetchMessages({ limit: 2 });
             
             if (mensagens.length > 1) {
-                const mensagemAnterior = mensagens[mensagens.length - 2];
+                const messageAnterior = mensagens[mensagens.length - 2];
                 
-                if (mensagemAnterior.fromMe || mensagemAnterior.id.fromMe) {
+                if (messageAnterior.fromMe || messageAnterior.id.fromMe) {
                     clientesAtendidos[numero] = true;
                     clientesAguardando[numero] = true; 
                     console.log(`Conversa iniciada manualmente com ${numero}. Bot silenciado.`);
@@ -73,13 +73,13 @@ client.on('message', async message => {
             const media = await message.downloadMedia();
             
             if (media && media.mimetype.startsWith('audio')) {
-                // Se o cliente já está na fila de espera, o bot não responde aos novos áudios dele
                 if (clientesAguardando[numero]) {
                     console.log(`Áudio recebido de ${numero}, mas o cliente já está aguardando suporte. Ignorado.`);
                     return;
                 }
 
-                console.log("Áudio recebido do cliente. Enviando aviso...");
+                console.log("Áudio recebido do cliente. Aplicando delay de 3 segundos...");
+                await delay(3000); // Espera 3 segundos simulando audição/digitação
                 
                 if (!clientesAtendidos[numero]) {
                     clientesAtendidos[numero] = true;
@@ -96,36 +96,45 @@ client.on('message', async message => {
 
         const texto = (message.body || "").trim().toLowerCase();
 
-        // MENU
+        // MENU (Quando o cliente digita "menu")
         if (texto === "menu") {
-            console.log("Enviando menu...");
+            console.log("Enviando menu... Aplicando delay de 2 segundos...");
             clientesAguardando[numero] = false;
             clientesAtendidos[numero] = true; 
+            
+            await delay(2000); // Espera 2 segundos
             await message.reply(gerarMenu());
             return;
         }
 
-        // Primeira mensagem (Texto)
+        // Primeira mensagem de texto do cliente
         if (!clientesAtendidos[numero]) {
             clientesAtendidos[numero] = true;
+            
+            console.log("Primeira mensagem de texto. Aplicando delay de 3 segundos...");
+            await delay(3000); // Espera 3 segundos
             await message.reply(gerarMenu());
             return;
         }
 
-        // Opções do menu
+        // Opções do menu (1, 2, 3 ou 4)
         if (menu[texto]) {
-            console.log("PASSOU AQUI - OPCAO");
+            console.log("Opção do menu selecionada. Aplicando delay de 2 segundos...");
+            
+            await delay(2000); // Espera 2 segundos
             await message.reply(menu[texto]);
             return;
         }
 
-        // Já recebeu aviso de espera
+        // Já recebeu aviso de espera (ignora textos repetidos para não fludar)
         if (clientesAguardando[numero]) {
             return;
         }
 
-        // Qualquer outro texto
-        console.log("PASSOU AQUI EM AVISOS...");
+        // Qualquer outro texto fora do menu (Aviso de encaminhamento para suporte)
+        console.log("Texto fora do menu. Aplicando delay de 3 segundos antes do aviso...");
+        
+        await delay(3000); // Espera 3 segundos
         await message.reply(
 `Um momento por favor.
 
@@ -141,4 +150,5 @@ Caso deseje visualizar novamente as opções de atendimento, digite *MENU*.`
     }
 });
 
+// Inicialização do cliente (sempre na última linha)
 client.initialize();
